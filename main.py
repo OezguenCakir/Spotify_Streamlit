@@ -12,7 +12,7 @@ SPOTIPY_CLIENT_ID = os.environ['SPOTIPY_CLIENT_ID']
 SPOTIPY_CLIENT_SECRET = os.environ['SPOTIPY_CLIENT_SECRET']
 SPOTIPY_REDIRECT_URI = os.environ['SPOTIPY_REDIRECT_URI']
 
-
+st.write(os.environ["SPOTIPY_REDIRECT_URI"])
 scope = 'user-top-read'
 
 
