@@ -8,15 +8,14 @@ from PIL import Image
 from urllib.request import urlopen
 
 
-SPOTIPY_CLIENT_ID = os.environ['SPOTIPY_CLIENT_ID']
+SPOTIPY_CLIENT_ID =     os.environ['SPOTIPY_CLIENT_ID']
 SPOTIPY_CLIENT_SECRET = os.environ['SPOTIPY_CLIENT_SECRET']
-SPOTIPY_REDIRECT_URI = os.environ['SPOTIPY_REDIRECT_URI']
-
-st.write(os.environ["SPOTIPY_REDIRECT_URI"])
-scope = 'user-top-read'
+SPOTIPY_REDIRECT_URI =  os.environ['SPOTIPY_REDIRECT_URI']
 
 
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope))
+scope = 'ugc-image-upload user-read-playback-state user-modify-playback-state user-read-currently-playing app-remote-control streaming playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-follow-modify user-follow-read user-read-playback-position user-top-read user-read-recently-played user-library-modify user-library-read user-read-email user-read-private'
+#'user-top-read'
+sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, cache_path='cache.txt'))
 
 
 
@@ -24,11 +23,10 @@ st.title('🎵 Deine Spotify-Daten')
 st.write('')
 
 col1, col2 = st.columns([1,5])
+col1.image( sp.me().get('images')[0].get('url'), width=75 )
 col2.subheader('[' + sp.me().get('display_name') + '](' + sp.me().get('external_urls').get('spotify') + ') (' + sp.me().get('id') + ')')
 col2.write('Follower: ' + str(sp.me().get('followers').get('total')))
-col1.image( sp.me().get('images')[0].get('url'), width=75 )
 
-st.write('')
 
 ranges = st.radio("Zeitbezug", ('Letzte 4 Wochen', 'Letzte 6 Monate', 'Alle Daten'), horizontal=True)
 
@@ -43,8 +41,7 @@ elif ranges == 'Alle Daten':
 results = sp.current_user_top_artists(time_range=zeitbezug, limit=50)
 df = pd.DataFrame(results['items'])
 
-results_top_lieder = sp.current_user_top_tracks(time_range=zeitbezug, limit=50)
-df_top_lieder = pd.DataFrame(results_top_lieder['items'])
+
 
 
 
@@ -118,47 +115,49 @@ col3.image(
     use_column_width=True
 )
 
-
-
 st.dataframe(df2)
 
 
 
-for x in range(1,4):
-    st.subheader(str(x) + '. ' + df['Name'][x])
-    img = Image.open(urlopen(pic_of_artist(df['Name'][x])))
-    st.image( resize_image(image= img, length= 10000), width=100 )
-
-    st.write('**Popularität des Künstlers**')
-    st.progress(int(df['Popularität'][df.Name == df['Name'][x]].values[0]))
-
-    st.write('**Aktuell beliebteste Lieder**')
-    results_artist_top_tracks = sp.artist_top_tracks(df['uri'][df.Name == df['Name'][x]].values[0])
-    for x in range(1,6):
-        track = results_artist_top_tracks['tracks'][x-1]
-        col1, col2 = st.columns([3,1])
-        col1.write(str(x) + '. ' + track['name'])
-        col2.image(track['album']['images'][0]['url'], width=30)
-        #col3.audio( track['preview_url'], format="audio/wav" )
-    
+st.header('Deine meistegehörtesten Lieder')
 
 
-st.subheader('Deine meistegehörtesten Lieder')
+results_top_lieder = sp.current_user_top_tracks(time_range=zeitbezug, limit=50)
+df_top_lieder = pd.DataFrame(results_top_lieder['items'])
 
-
-df_top_lieder.index = np.arange(1, len(df_top_lieder) + 1)
-df_top_lieder['Dauer'] = pd.to_datetime(df_top_lieder['duration_ms'], unit='ms').dt.strftime('%M:%S')
-df_top_lieder['Album'] = [d.get('name') for d in df_top_lieder.album]
-df_top_lieder['Song'] = df_top_lieder.name 
-df_top_lieder['Explizit'] = df_top_lieder.explicit
-df_top_lieder['Popularität'] = df_top_lieder.popularity 
-
+df_top_lieder.index =           np.arange(1, len(df_top_lieder) + 1)
+df_top_lieder['Dauer'] =        pd.to_datetime(df_top_lieder['duration_ms'], unit='ms').dt.strftime('%M:%S')
+df_top_lieder['Album'] =        [d.get('name') for d in df_top_lieder.album]
+df_top_lieder['Song'] =         df_top_lieder.name 
+df_top_lieder['Explizit'] =     df_top_lieder.explicit
+df_top_lieder['Popularität'] =  df_top_lieder.popularity
+df_top_lieder['Album Cover'] =  [d.get('images')[1].get('url') for d in df_top_lieder.album]
 
 new_list = []
 for list in df_top_lieder.artists:
     new_list.append([nested_list['name'] for nested_list in list])
 
 df_top_lieder['Künstler'] = pd.Series(new_list).values
+
+
+df_top_lieder.index = np.arange(1, len(df_top_lieder) + 1)
+
+col1, col2, col3 = st.columns(3, gap='medium')
+
+col1.write('1. ' + df_top_lieder['Song'][1])
+col1.image(df_top_lieder['Album Cover'][1], width=200, use_column_width=True)
+col1.write(str(df_top_lieder['Künstler'][1]).strip("'[]").replace("'",""))
+
+col2.write('2. ' + df_top_lieder['Song'][2])
+col2.image(df_top_lieder['Album Cover'][2], width=200, use_column_width=True)
+col2.write(str(df_top_lieder['Künstler'][2]).strip("'[]").replace("'",""))
+
+col3.write('3. ' + df_top_lieder['Song'][3])
+col3.image(df_top_lieder['Album Cover'][3], width=200, use_column_width=True)
+col3.write(str(df_top_lieder['Künstler'][3]).strip("'[]").replace("'",""))
+
+
+
 
 
 df_full = df_top_lieder [[
