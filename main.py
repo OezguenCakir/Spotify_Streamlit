@@ -6,7 +6,11 @@ from spotipy.oauth2 import SpotifyOAuth
 import numpy as np
 from PIL import Image
 from urllib.request import urlopen
+import base64
 
+
+with open("pictures/top_tracks_all.jpg", "rb") as img_file:
+    cover_toptracks_all = base64.b64encode(img_file.read())
 
 SPOTIPY_CLIENT_ID =     os.environ['SPOTIPY_CLIENT_ID']
 SPOTIPY_CLIENT_SECRET = os.environ['SPOTIPY_CLIENT_SECRET']
@@ -16,7 +20,7 @@ SPOTIPY_REDIRECT_URI =  os.environ['SPOTIPY_REDIRECT_URI']
 scope = 'ugc-image-upload user-read-playback-state user-modify-playback-state user-read-currently-playing app-remote-control streaming playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-follow-modify user-follow-read user-read-playback-position user-top-read user-read-recently-played user-library-modify user-library-read user-read-email user-read-private'
 #'user-top-read'
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, cache_path='cache.txt'))
-
+user=sp.me().get('id')
 
 
 st.title('🎵 Deine Spotify-Daten')
@@ -28,13 +32,13 @@ col2.subheader('[' + sp.me().get('display_name') + '](' + sp.me().get('external_
 col2.write('Follower: ' + str(sp.me().get('followers').get('total')))
 
 
-ranges = st.radio("Zeitbezug", ('Letzte 4 Wochen', 'Letzte 6 Monate', 'Alle Daten'), horizontal=True)
+ranges = st.radio("Zeitbezug", ('Letzte 4 Wochen', 'Letzte 6 Monate', 'Ganzer Zeitraum'), horizontal=True)
 
 if ranges == 'Letzte 4 Wochen':
     zeitbezug = 'short_term'
 elif ranges == 'Letzte 6 Monate':
     zeitbezug = 'medium_term'
-elif ranges == 'Alle Daten':
+elif ranges == 'Ganzer Zeitraum':
     zeitbezug = 'long_term'
 
 # Shows the top artists for a user
@@ -138,57 +142,67 @@ for list in df_top_lieder.artists:
     new_list.append([nested_list['name'] for nested_list in list])
 
 df_top_lieder['Künstler'] = pd.Series(new_list).values
-
-
 df_top_lieder.index = np.arange(1, len(df_top_lieder) + 1)
+
 
 col1, col2, col3 = st.columns(3, gap='medium')
 
-col1.write('1. ' + df_top_lieder['Song'][1])
 col1.image(df_top_lieder['Album Cover'][1], width=200, use_column_width=True)
-col1.write(str(df_top_lieder['Künstler'][1]).strip("'[]").replace("'",""))
+col1.write('**1. ' + df_top_lieder['Song'][1] + '**' + '  \n' + str(df_top_lieder['Künstler'][1]).strip("'[]").replace("'",""))
 
-col2.write('2. ' + df_top_lieder['Song'][2])
 col2.image(df_top_lieder['Album Cover'][2], width=200, use_column_width=True)
-col2.write(str(df_top_lieder['Künstler'][2]).strip("'[]").replace("'",""))
+col2.write('**2. ' + df_top_lieder['Song'][2] + '**' + '  \n' + str(df_top_lieder['Künstler'][2]).strip("'[]").replace("'",""))
 
-col3.write('3. ' + df_top_lieder['Song'][3])
 col3.image(df_top_lieder['Album Cover'][3], width=200, use_column_width=True)
-col3.write(str(df_top_lieder['Künstler'][3]).strip("'[]").replace("'",""))
+col3.write('**3. ' + df_top_lieder['Song'][3] + '**' + '  \n' + str(df_top_lieder['Künstler'][3]).strip("'[]").replace("'",""))
 
-
-
-
-
-df_full = df_top_lieder [[
-    'Album',
-    'Künstler',
-    'available_markets',
-    'disc_number',
-    'duration_ms',
-    'Dauer',
-    'Explizit',
-    'external_ids',
-    'external_urls',
-    'href',
-    'id',
-    'is_local',
-    'name',
-    'Popularität',
-    'preview_url',
-    'track_number',
-    'type',
-    'uri'
-    ]]
-
-
-df_top_lieder = df_top_lieder [[
-    'Song',
-    'Künstler',
-    'Album',
-    'Dauer',
-    'Explizit',
-    'Popularität',
-    ]]
-
+df_top_lieder = df_top_lieder [['Song', 'Künstler', 'Album', 'Dauer', 'Explizit', 'Popularität' ]]
 st.write(df_top_lieder)
+
+
+if st.button(label='erstelle Playlist'):
+    playlist = sp.user_playlist_create(
+        user=user,
+        name="Deine Top-Songs - " + ranges
+    )
+    playlist_id = playlist["id"]
+    sp.user_playlist_add_tracks(
+        user=user,
+        playlist_id=playlist_id,
+        tracks=pd.DataFrame(results_top_lieder['items']).id
+       )
+    sp.user_playlist_change_details(
+        user=user,
+        playlist_id=playlist_id,
+        description="gloreich gebaut"
+    )
+    sp.playlist_upload_cover_image(
+        playlist_id=playlist_id,
+        image_b64=cover_toptracks_all
+    )
+    st.write('Playlist wurde erstellt :)')
+
+
+user_playlists =    sp.user_playlists(user, offset=0)
+num_playlists =     str(user_playlists.get('total'))
+df_playlists =      pd.DataFrame(user_playlists.get('items'))
+
+st.subheader('Du hast ' + num_playlists + ' Playlists gespeichert')
+
+df_playlists.index =        np.arange(1, len(df_playlists) + 1)
+df_playlists['Lieder'] =    [d.get('total') for d in df_playlists['tracks']]
+df_playlists['Besitzer'] =  [d.get('display_name') for d in df_playlists['owner']]
+df_playlists['Link'] =      [d.get('spotify') for d in df_playlists['external_urls']]
+
+
+
+df_playlists.drop(
+    columns=['owner', 'external_urls', 'images', 'href', 'uri', 'tracks', 'snapshot_id', 'primary_color', 'type'],
+    inplace=True)
+
+df_playlists.rename(
+    columns={"description": "Beschreibung", "name": "Name", "public":"Öffentlich", "collaborative":"Gemeinsam"},
+    inplace=True)
+
+df_playlists = df_playlists[['Name', 'Besitzer', 'Öffentlich', 'Gemeinsam', 'Lieder', 'Beschreibung', 'Link']]
+st.write(df_playlists)
