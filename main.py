@@ -6,11 +6,11 @@ from spotipy.oauth2 import SpotifyOAuth
 import numpy as np
 from PIL import Image
 from urllib.request import urlopen
+import requests
 import base64
 
-
-with open("pictures/top_tracks_all.jpg", "rb") as img_file:
-    cover_toptracks_all = base64.b64encode(img_file.read())
+def to_b64(url):
+    return base64.b64encode(requests.get(url).content)
 
 SPOTIPY_CLIENT_ID =     os.environ['SPOTIPY_CLIENT_ID']
 SPOTIPY_CLIENT_SECRET = os.environ['SPOTIPY_CLIENT_SECRET']
@@ -36,10 +36,13 @@ ranges = st.radio("Zeitbezug", ('Letzte 4 Wochen', 'Letzte 6 Monate', 'Ganzer Ze
 
 if ranges == 'Letzte 4 Wochen':
     zeitbezug = 'short_term'
+    image_b64 = to_b64('https://raw.githubusercontent.com/OezguenCakir/Spotify_Streamlit/main/pictures/top_tracks_all.jpg')
 elif ranges == 'Letzte 6 Monate':
     zeitbezug = 'medium_term'
+    image_b64 = to_b64('https://raw.githubusercontent.com/OezguenCakir/Spotify_Streamlit/main/pictures/top_tracks_all.jpg')
 elif ranges == 'Ganzer Zeitraum':
     zeitbezug = 'long_term'
+    image_b64 = to_b64('https://raw.githubusercontent.com/OezguenCakir/Spotify_Streamlit/main/pictures/top_tracks_all.jpg')
 
 # Shows the top artists for a user
 results = sp.current_user_top_artists(time_range=zeitbezug, limit=50)
@@ -178,7 +181,7 @@ if st.button(label='erstelle Playlist'):
     )
     sp.playlist_upload_cover_image(
         playlist_id=playlist_id,
-        image_b64=cover_toptracks_all
+        image_b64=image_b64
     )
     st.write('Playlist wurde erstellt :)')
 
