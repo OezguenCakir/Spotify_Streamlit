@@ -11,6 +11,7 @@ import base64
 from io import BytesIO
 import plotly.express as px
 
+st.write(st.secrets["SPOTIPY_CLIENT_ID"])
 
 def to_b64(url):
     return base64.b64encode(requests.get(url).content)
