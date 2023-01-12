@@ -9,11 +9,11 @@ from urllib.request import urlopen
 import requests
 import base64
 from io import BytesIO
-import plotly.express as px
 
 
 def to_b64(url):
     return base64.b64encode(requests.get(url).content)
+
 
 def df_to_excel(df):
     output = BytesIO()
@@ -50,10 +50,12 @@ def df_to_excel(df):
     processed_data = output.getvalue()
     return processed_data
 
+
 def pic_of_artist(name):
     artist = sp.search(
         q='artist:' + name, type='artist')['artists']['items'][0]['images'][0]['url']
     return artist
+
 
 def resize_image(image: Image, length: int) -> Image:
     if image.size[1] == image.size[0]:
@@ -93,7 +95,6 @@ user = sp.me().get('id')
 # ANFANG
 st.title('🎵 Deine Spotify-Daten')
 st.write('')
-
 
 # USER
 col1, col2 = st.columns([1, 5])
@@ -140,7 +141,7 @@ st.subheader('Deine Lieblingskünstler')
 
 col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
 
-col1.write('**1. ' + df['Name'][1] + '**')
+col1.subheader('1. ' + df['Name'][1])
 img = Image.open(urlopen(pic_of_artist(df['Name'][1])))
 col1.image(
     resize_image(image=img, length=10000),
@@ -148,7 +149,7 @@ col1.image(
     use_column_width=True
 )
 
-col2.write('**2. ' + df['Name'][2] + '**')
+col2.subheader('2. ' + df['Name'][2])
 img = Image.open(urlopen(pic_of_artist(df['Name'][2])))
 col2.image(
     img,
@@ -156,7 +157,7 @@ col2.image(
     use_column_width=True
 )
 
-col3.write('**3. ' + df['Name'][3] + '**')
+col3.subheader('3. ' + df['Name'][3])
 img = Image.open(urlopen(pic_of_artist(df['Name'][3])))
 col3.image(
     resize_image(image=img, length=10000),
@@ -393,11 +394,11 @@ num_saved_songs = sp.current_user_saved_tracks().get('total')
 
 st.header('Du hast ' + str(num_saved_songs) + ' als Lieblingssongs markiert')
 
-@st.cache
+
 def get_all_saved_tracks(user):
     tracks = []
     for offset in range(0, 10000000, 50):
-        response = sp.current_user_saved_tracks(limit=50, offset=offset, market='DE')
+        response = sp.current_user_saved_tracks(limit=50, offset=offset)
         print(offset, end="\r")
         if response.get('items') == []:
             break
@@ -439,6 +440,7 @@ df_fav_songs['Link'] = [d.get('spotify') for d in [d.get(
 # df_fav_songs['Snippet'] = [d.get('preview_url') for d in df_fav_songs['track']]
 
 
+st.write(df_fav_songs.drop(columns=['added_at', 'track']))
 
 
 df_audio = pd.DataFrame(sp.audio_features(tracks=df_top_lieder['id']))
@@ -463,6 +465,7 @@ def get_all_saved_tracks():
     for offset in range(0, 10000000, 50):
         offset2 = offset+50
         response = sp.audio_features(tracks=list_songs[offset:offset2])
+        print(response)
         if response == [None]:
             break
         if [r for r in response] == 'Null':
@@ -476,10 +479,12 @@ pre_df_audiodata = get_all_saved_tracks()
 new_list = []
 print('LETS GO')
 for i in pre_df_audiodata:
+    print(type(i))
     if i is not None:
         new_list.append(i)
 df_audiodata = pd.DataFrame(new_list)
 
+st.write(df_audiodata)
 
 
 
@@ -488,80 +493,17 @@ df_audiodata = pd.DataFrame(new_list)
 df_audio_joined = df_fav_songs.merge(df_audiodata, how='left', left_on='ID', right_on='id')
 
 df_audio_joined.index = np.arange(1, len(df_audio_joined) + 1)
+df_audio_joined.drop(columns=['added_at', 'ID', 'type', 'id', 'uri', 'track_href', 'analysis_url', 'duration_ms','Lokal'], inplace=True)
 
-df_audio_joined['Verfügbar'] = [d.get('is_playable') for d in df_audio_joined['track']]
-
-
-df_audio_joined.drop(columns=['added_at','ID','type','id','uri','track_href','analysis_url','duration_ms','Lokal','track'], inplace=True)
-
-
-
+df_audio_joined['Preview'] = [d.get('preview_url') for d in df_audio_joined['track']]
 
 
 
 st.write(df_audio_joined)
-
-num_not_available = len(df_audio_joined['Verfügbar'][df_audio_joined['Verfügbar']!=True])
-perc_not_available = '{:.1%}'.format(num_not_available/num_saved_songs)
-
-st.subheader(str(num_not_available) + ' deiner Lieder sind nicht mehr verfügbar')
-st.caption('das sind ' + str(perc_not_available) + ' deiner Lieblingslieder')
-df_available = df_audio_joined[df_audio_joined['Verfügbar']==False]
-st.write(df_available[['Hinzugefügt am', 'Name', 'Künstler','Dauer','Album']])
-
-from datetime import datetime
-
-# Convert string column to datetime.time
-def str_to_time(time_str):
-  return datetime.strptime(time_str, '%M:%S').time()
-
-# Apply the function to the column
-df_audio_joined['Dauer'] =df_audio_joined['Dauer'].apply(str_to_time).apply(lambda x: datetime.combine(datetime(1998, 11, 2), x))
-
-
-fig = px.bar(df_audio_joined, x="Dauer", title='Dauer deiner Lieder')
-st.plotly_chart(fig, use_container_width=True, config= {'displaylogo': False})
-
-fig = px.bar(df_audio_joined, x="danceability", title='Dauer deiner Lieder')
-st.plotly_chart(fig, use_container_width=True, config= {'displaylogo': False})
-
-
-fig = px.pie(df_audio_joined, names='Album-Typ')
-st.plotly_chart(fig, use_container_width=True, config= {'displaylogo': False})
-
-
-
-
 st.download_button(
     label='📥 Excel-Datei',
     data=df_to_excel(df_audio_joined),
     file_name='lieblingslieder.xlsx'
 )
-
-
-energy_avg = df_audio_joined['energy'].mean()
-dancea_avg = df_audio_joined['danceability'].mean()
-acoust_avg = df_audio_joined['acousticness'].mean()
-valenc_avg = df_audio_joined['valence'].mean()
-speech_avg = df_audio_joined['speechiness'].mean()
-livene_avg = df_audio_joined['liveness'].mean()
-instru_avg = df_audio_joined['instrumentalness'].mean()
-
-df = pd.DataFrame(dict(
-    r = [energy_avg, dancea_avg, acoust_avg, valenc_avg, speech_avg, livene_avg, instru_avg],
-    theta = ['Energie', 'Tanzbarkeit', 'Akustik', 'Positivität', 'Sprachlich', 'Live', 'Instrumental']))
-
-
-fig = px.line_polar(
-    df, 
-    r='r', 
-    theta='theta', 
-    line_close=True)
-fig.update_traces(fill='toself')
-st.plotly_chart(fig, use_container_width=True, config= {'displaylogo': False})
-
-
-
-
 
 st.write('ENDE')
