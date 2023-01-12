@@ -11,7 +11,7 @@ import base64
 from io import BytesIO
 import plotly.express as px
 
-st.write(st.secrets["SPOTIPY_CLIENT_ID"])
+st.write()
 
 def to_b64(url):
     return base64.b64encode(requests.get(url).content)
@@ -81,9 +81,9 @@ def resize_image(image: Image, length: int) -> Image:
         return resized_image
 
 
-SPOTIPY_CLIENT_ID = os.environ['SPOTIPY_CLIENT_ID']
-SPOTIPY_CLIENT_SECRET = os.environ['SPOTIPY_CLIENT_SECRET']
-SPOTIPY_REDIRECT_URI = os.environ['SPOTIPY_REDIRECT_URI']
+SPOTIPY_CLIENT_ID = st.secrets["SPOTIPY_CLIENT_ID"]
+SPOTIPY_CLIENT_SECRET = st.secrets["SPOTIPY_CLIENT_SECRET"]
+SPOTIPY_REDIRECT_URI = st.secrets["SPOTIPY_REDIRECT_URI"]
 
 
 scope = 'ugc-image-upload user-read-playback-state user-modify-playback-state user-read-currently-playing app-remote-control streaming playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-follow-modify user-follow-read user-read-playback-position user-top-read user-read-recently-played user-library-modify user-library-read user-read-email user-read-private'
