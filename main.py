@@ -90,6 +90,41 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     scope=scope, cache_path='cache.txt'))
 user = sp.me().get('id')
 
+class StreamlitCacheHandler(spotipy.cache_handler.CacheHandler): 
+    #A cache handler that stores the token info in the session framework provided by streamlit.
+    def __init__(self, session):
+        self.session = session
+
+    def get_cached_token(self):
+        token_info = None
+        try:
+            token_info = self.session["token_info"]
+        except KeyError:
+            print("Token not found in the session")
+
+        return token_info
+
+    def save_token_to_cache(self, token_info):
+        try:
+            self.session["token_info"] = token_info
+        except Exception as e:
+            print("Error saving token to cache: " + str(e))
+
+cache_handler = StreamlitCacheHandler(st.session_state)  # same as the FlaskSessionCacheHandler
+auth_manager = spotipy.oauth2.SpotifyOAuth(scope=scope, cache_handler=cache_handler, show_dialog=True)
+
+# if there is no cached token, open the sign in page
+if not auth_manager.validate_token(cache_handler.get_cached_token()):
+   auth_url = auth_manager.get_authorize_url()  # log in url
+
+   # if you're redirected from the sign in page, there is a code in the url
+   if 'code' in st.experimental_get_query_params():  
+       auth_manager.get_access_token(st.experimental_get_query_params()['code'])  # use the code to generate the token
+       sp = spotipy.Spotify(auth_manager=auth_manager)  
+   else:  # if no code, add a button linking to the log in url
+       print(auth_url, 'Log in')  # this adds a button linking to the authorization page
+
+
 
 # ANFANG
 st.title('🎵 Deine Spotify-Daten')
@@ -142,27 +177,15 @@ col1, col2, col3 = st.columns(3, gap="medium")
 
 col1.write('**1. ' + df['Name'][1] + '**')
 img = Image.open(urlopen(pic_of_artist(df['Name'][1])))
-col1.image(
-    resize_image(image=img, length=10000),
-    width=200,
-    use_column_width=True
-)
+col1.image( resize_image(image=img, length=10000), width=200, use_column_width=True )
 
 col2.write('**2. ' + df['Name'][2] + '**')
 img = Image.open(urlopen(pic_of_artist(df['Name'][2])))
-col2.image(
-    img,
-    width=200,
-    use_column_width=True
-)
+col2.image( img, width=200, use_column_width=True )
 
 col3.write('**3. ' + df['Name'][3] + '**')
 img = Image.open(urlopen(pic_of_artist(df['Name'][3])))
-col3.image(
-    resize_image(image=img, length=10000),
-    width=200,
-    use_column_width=True
-)
+col3.image( resize_image(image=img, length=10000), width=200, use_column_width=True )
 
 if st.button(label='Zeige deine ' + str(len(df2)) + ' Top Künstler an'):
     st.dataframe(df2)
@@ -176,14 +199,12 @@ results_top_lieder = sp.current_user_top_tracks(time_range=zeitbezug, limit=50)
 df_top_lieder = pd.DataFrame(results_top_lieder['items'])
 
 df_top_lieder.index = np.arange(1, len(df_top_lieder) + 1)
-df_top_lieder['Dauer'] = pd.to_datetime(
-    df_top_lieder['duration_ms'], unit='ms').dt.strftime('%M:%S')
+df_top_lieder['Dauer'] = pd.to_datetime(df_top_lieder['duration_ms'], unit='ms').dt.strftime('%M:%S')
 df_top_lieder['Album'] = [d.get('name') for d in df_top_lieder.album]
 df_top_lieder['Song'] = df_top_lieder.name
 df_top_lieder['Explizit'] = df_top_lieder.explicit
 df_top_lieder['Popularität'] = df_top_lieder.popularity
-df_top_lieder['Album Cover'] = [
-    d.get('images')[1].get('url') for d in df_top_lieder.album]
+df_top_lieder['Album Cover'] = [d.get('images')[1].get('url') for d in df_top_lieder.album]
 
 new_list = []
 for list in df_top_lieder.artists:
@@ -195,16 +216,13 @@ df_top_lieder.index = np.arange(1, len(df_top_lieder) + 1)
 
 col1, col2, col3 = st.columns(3, gap='medium')
 
-col1.write('**1. ' + df_top_lieder['Song'][1] + '**' + '  \n' +
-           str(df_top_lieder['Künstler'][1]).strip("'[]").replace("'", ""))
+col1.write('**1. ' + df_top_lieder['Song'][1] + '**' + '  \n' + str(df_top_lieder['Künstler'][1]).strip("'[]").replace("'", ""))
 col1.image(df_top_lieder['Album Cover'][1], width=200, use_column_width=True)
 
-col2.write('**2. ' + df_top_lieder['Song'][2] + '**' + '  \n' +
-           str(df_top_lieder['Künstler'][2]).strip("'[]").replace("'", ""))
+col2.write('**2. ' + df_top_lieder['Song'][2] + '**' + '  \n' + str(df_top_lieder['Künstler'][2]).strip("'[]").replace("'", ""))
 col2.image(df_top_lieder['Album Cover'][2], width=200, use_column_width=True)
 
-col3.write('**3. ' + df_top_lieder['Song'][3] + '**' + '  \n' +
-           str(df_top_lieder['Künstler'][3]).strip("'[]").replace("'", ""))
+col3.write('**3. ' + df_top_lieder['Song'][3] + '**' + '  \n' + str(df_top_lieder['Künstler'][3]).strip("'[]").replace("'", ""))
 col3.image(df_top_lieder['Album Cover'][3], width=200, use_column_width=True)
 
 
@@ -237,11 +255,7 @@ if col2.button(label='🎶 Erstelle Playlist'):
     )
     col1.write('Playlist wurde erstellt :)')
 
-col3.download_button(
-    label='📥 Excel-Datei',
-    data=df_to_excel(df_top_lieder),
-    file_name='topsongs-' + ranges + '.xlsx'
-)
+col3.download_button( label='📥 Excel-Datei', data=df_to_excel(df_top_lieder), file_name='topsongs-' + ranges + '.xlsx' )
 
 
 
@@ -264,10 +278,8 @@ df_playlists = pd.DataFrame(get_all_saved_tracks(
 st.header('Du hast ' + num_playlists + ' Playlists gespeichert')
 df_playlists.index = np.arange(1, len(df_playlists) + 1)
 df_playlists['Lieder'] = [d.get('total') for d in df_playlists['tracks']]
-df_playlists['Besitzer'] = [d.get('display_name')
-                            for d in df_playlists['owner']]
-df_playlists['Link'] = [d.get('spotify')
-                        for d in df_playlists['external_urls']]
+df_playlists['Besitzer'] = [d.get('display_name') for d in df_playlists['owner']]
+df_playlists['Link'] = [d.get('spotify') for d in df_playlists['external_urls']]
 
 
 col1, col2, col3 = st.columns(3, gap='medium')
@@ -275,14 +287,11 @@ col1, col2, col3 = st.columns(3, gap='medium')
 cover_firstplaylist = resize_image(Image.open(
     urlopen(df_playlists['images'].str[0].iloc[-1].get('url'))), length=10000)
 
-col1.write('**Playlist mit meisten Liedern:**  \n' +
-           df_playlists.sort_values(by='Lieder', ascending=False)['name'].iloc[0])
-col1.image(df_playlists.sort_values(by='Lieder', ascending=False)[
-           'images'].str[0].iloc[0].get('url'), width=200, use_column_width=True)
+col1.write('**Playlist mit meisten Liedern:**  \n' + df_playlists.sort_values(by='Lieder', ascending=False)['name'].iloc[0])
+col1.image(df_playlists.sort_values(by='Lieder', ascending=False)['images'].str[0].iloc[0].get('url'), width=200, use_column_width=True)
 
 col2.write('**neueste Playlist:**  \n' + df_playlists['name'].iloc[0])
-col2.image(df_playlists['images'].str[0].iloc[0].get(
-    'url'), width=200, use_column_width=True)
+col2.image(df_playlists['images'].str[0].iloc[0].get('url'), width=200, use_column_width=True)
 
 col3.write('**erste Playlist:**  \n' + df_playlists['name'].iloc[-1])
 col3.image(cover_firstplaylist, width=200, use_column_width=True)
@@ -290,17 +299,15 @@ col3.image(cover_firstplaylist, width=200, use_column_width=True)
 
 
 df_playlists.drop(
-    columns=['owner', 'external_urls', 'images', 'href', 'uri',
-             'tracks', 'snapshot_id', 'primary_color', 'type'],
+    columns=['owner', 'external_urls', 'images', 'href', 'uri', 'tracks', 'snapshot_id', 'primary_color', 'type'],
     inplace=True)
 
 df_playlists.rename(
-    columns={"description": "Beschreibung", "name": "Name",
-             "public": "Öffentlich", "collaborative": "Gemeinsam"},
+    columns={"description": "Beschreibung", "name": "Name", "public": "Öffentlich", "collaborative": "Gemeinsam"},
     inplace=True)
 
-df_playlists = df_playlists[[
-    'Name', 'Besitzer', 'Öffentlich', 'Gemeinsam', 'Lieder', 'Beschreibung', 'Link']]
+df_playlists = df_playlists[['Name', 'Besitzer', 'Öffentlich', 'Gemeinsam', 'Lieder', 'Beschreibung', 'Link']]
+
 if st.button(label='Zeige meine Playlists an'):
     st.write(df_playlists)
 
@@ -342,23 +349,18 @@ df_shows['Episoden'] = [d.get('total_episodes') for d in df_shows['show']]
 df_shows['Sprache'] = [d.get('languages') for d in df_shows['show']]
 df_shows['Beschreibung'] = [d.get('description') for d in df_shows['show']]
 df_shows['Explizit'] = [d.get('explicit') for d in df_shows['show']]
-df_shows['Extern gehosted'] = [
-    d.get('is_externally_hosted') for d in df_shows['show']]
+df_shows['Extern gehosted'] = [d.get('is_externally_hosted') for d in df_shows['show']]
 
 
 col1, col2, col3 = st.columns(3, gap='medium')
-col1.image([d.get('images') for d in df_shows['show']][0]
-           [1].get('url'), width=200, use_column_width=True)
+col1.image([d.get('images') for d in df_shows['show']][0][1].get('url'), width=200, use_column_width=True)
 col1.write('**als letztes hinzugefügt:**  \n' + df_shows['Name'].iloc[0])
 
-col2.image([d.get('images') for d in df_shows['show']][-1]
-           [1].get('url'), width=200, use_column_width=True)
+col2.image([d.get('images') for d in df_shows['show']][-1][1].get('url'), width=200, use_column_width=True)
 col2.write('**als erstes hinzugefügt:**  \n' + df_shows['Name'].iloc[-1])
 
-col3.image(df_shows.sort_values(by='Episoden', ascending=False)[
-           'show'].iloc[0].get('images')[1].get('url'), width=200, use_column_width=True)
-col3.write('**meiste Episoden:**  \n' +
-           df_shows.sort_values(by='Episoden', ascending=False)['Name'].iloc[0])
+col3.image(df_shows.sort_values(by='Episoden', ascending=False)['show'].iloc[0].get('images')[1].get('url'), width=200, use_column_width=True)
+col3.write('**meiste Episoden:**  \n' + df_shows.sort_values(by='Episoden', ascending=False)['Name'].iloc[0])
 
 df_shows.index = np.arange(1, len(df_shows) + 1)
 df_shows.drop(columns=['added_at', 'show'], inplace=True)
