@@ -11,7 +11,6 @@ import base64
 from io import BytesIO
 import plotly.express as px
 
-st.write()
 
 def to_b64(url):
     return base64.b64encode(requests.get(url).content)
@@ -91,18 +90,19 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     scope=scope, cache_path='cache.txt'))
 user = sp.me().get('id')
 
+
 # ANFANG
 st.title('🎵 Deine Spotify-Daten')
+st.image('https://raw.githubusercontent.com/OezguenCakir/Spotify_Streamlit/main/pictures/banner.png')
 st.write('')
 
 
 # USER
-col1, col2 = st.columns([1, 5])
+col1, col2 = st.columns([1, 4])
 col1.image(sp.me().get('images')[0].get('url'), width=75)
-col2.subheader('[' + sp.me().get('display_name') + '](' +
-               sp.me().get('external_urls').get('spotify') + ') (' + sp.me().get('id') + ')')
-col2.write('Follower: ' + str(sp.me().get('followers').get('total')))
-col2.write('E-Mail: ' + str(sp.me().get('email')))
+col2.write('**[' + sp.me().get('display_name') + '](' + sp.me().get('external_urls').get('spotify') + ') (' + sp.me().get('id') + ')**' + '  \n'
+               + 'Follower: ' + str(sp.me().get('followers').get('total')) +  '  \n'
+               + 'E-Mail: ' + str(sp.me().get('email')))
 
 
 # VON DIR AM MEISTEN GESTREAMT
@@ -138,8 +138,7 @@ df2 = df[['Name', 'Genres', 'Popularität']]
 
 st.subheader('Deine Lieblingskünstler')
 
-
-col1, col2, col3 = st.columns([1, 1, 1], gap="medium")
+col1, col2, col3 = st.columns(3, gap="medium")
 
 col1.write('**1. ' + df['Name'][1] + '**')
 img = Image.open(urlopen(pic_of_artist(df['Name'][1])))
@@ -165,7 +164,8 @@ col3.image(
     use_column_width=True
 )
 
-st.dataframe(df2)
+if st.button(label='Zeige deine ' + str(len(df2)) + ' Top Künstler an'):
+    st.dataframe(df2)
 
 
 ## TOP-SONGS
@@ -195,25 +195,27 @@ df_top_lieder.index = np.arange(1, len(df_top_lieder) + 1)
 
 col1, col2, col3 = st.columns(3, gap='medium')
 
-col1.image(df_top_lieder['Album Cover'][1], width=200, use_column_width=True)
 col1.write('**1. ' + df_top_lieder['Song'][1] + '**' + '  \n' +
            str(df_top_lieder['Künstler'][1]).strip("'[]").replace("'", ""))
+col1.image(df_top_lieder['Album Cover'][1], width=200, use_column_width=True)
 
-col2.image(df_top_lieder['Album Cover'][2], width=200, use_column_width=True)
 col2.write('**2. ' + df_top_lieder['Song'][2] + '**' + '  \n' +
            str(df_top_lieder['Künstler'][2]).strip("'[]").replace("'", ""))
+col2.image(df_top_lieder['Album Cover'][2], width=200, use_column_width=True)
 
-col3.image(df_top_lieder['Album Cover'][3], width=200, use_column_width=True)
 col3.write('**3. ' + df_top_lieder['Song'][3] + '**' + '  \n' +
            str(df_top_lieder['Künstler'][3]).strip("'[]").replace("'", ""))
+col3.image(df_top_lieder['Album Cover'][3], width=200, use_column_width=True)
 
 
-st.write(df_top_lieder[['Song', 'Künstler', 'Album',
-                        'Dauer', 'Explizit', 'Popularität']])
 
-col1, col2 = st.columns(2)
 
-if col1.button(label='🎶 Erstelle Playlist'):
+
+col1, col2, col3 = st.columns(3)
+if col1.button(label='💿 Top 50 Lieder anzeigen'):
+    st.write(df_top_lieder[['Song', 'Künstler', 'Album', 'Dauer', 'Explizit', 'Popularität']])
+
+if col2.button(label='🎶 Erstelle Playlist'):
     playlist = sp.user_playlist_create(
         user=user,
         name="Deine Top-Songs - " + ranges
@@ -235,11 +237,12 @@ if col1.button(label='🎶 Erstelle Playlist'):
     )
     col1.write('Playlist wurde erstellt :)')
 
-col2.download_button(
+col3.download_button(
     label='📥 Excel-Datei',
     data=df_to_excel(df_top_lieder),
     file_name='topsongs-' + ranges + '.xlsx'
 )
+
 
 
 # PLAYLISTS
@@ -272,17 +275,18 @@ col1, col2, col3 = st.columns(3, gap='medium')
 cover_firstplaylist = resize_image(Image.open(
     urlopen(df_playlists['images'].str[0].iloc[-1].get('url'))), length=10000)
 
+col1.write('**Playlist mit meisten Liedern:**  \n' +
+           df_playlists.sort_values(by='Lieder', ascending=False)['name'].iloc[0])
 col1.image(df_playlists.sort_values(by='Lieder', ascending=False)[
            'images'].str[0].iloc[0].get('url'), width=200, use_column_width=True)
-col1.write('Playlist mit meisten Liedern:  \n' +
-           df_playlists.sort_values(by='Lieder', ascending=False)['name'].iloc[0])
 
+col2.write('**neueste Playlist:**  \n' + df_playlists['name'].iloc[0])
 col2.image(df_playlists['images'].str[0].iloc[0].get(
     'url'), width=200, use_column_width=True)
-col2.write('neueste Playlist:  \n' + df_playlists['name'].iloc[0])
 
+col3.write('**erste Playlist:**  \n' + df_playlists['name'].iloc[-1])
 col3.image(cover_firstplaylist, width=200, use_column_width=True)
-col3.write('erste Playlist:  \n' + df_playlists['name'].iloc[-1])
+
 
 
 df_playlists.drop(
@@ -297,7 +301,25 @@ df_playlists.rename(
 
 df_playlists = df_playlists[[
     'Name', 'Besitzer', 'Öffentlich', 'Gemeinsam', 'Lieder', 'Beschreibung', 'Link']]
-st.write(df_playlists)
+if st.button(label='Zeige meine Playlists an'):
+    st.write(df_playlists)
+
+fig = px.pie(
+    df_playlists, 
+    names='Besitzer',
+    title='Deine Playlist nach Besitzern')
+fig.update_traces(textposition='inside', textinfo='label', hoverinfo='value', showlegend=False)
+st.plotly_chart(fig, use_container_width=True, config= {'displaylogo': False})
+
+fig = px.pie(
+    df_playlists, 
+    names='Öffentlich',
+    title='Anteil öffentlicher Playlists')
+fig.update_traces(textposition='inside', textinfo='label', hoverinfo='value', showlegend=False)
+st.plotly_chart(fig, use_container_width=True, config= {'displaylogo': False})
+
+
+
 
 
 # GERÄTE
@@ -327,15 +349,15 @@ df_shows['Extern gehosted'] = [
 col1, col2, col3 = st.columns(3, gap='medium')
 col1.image([d.get('images') for d in df_shows['show']][0]
            [1].get('url'), width=200, use_column_width=True)
-col1.write('als letztes hinzugefügt:  \n' + df_shows['Name'].iloc[0])
+col1.write('**als letztes hinzugefügt:**  \n' + df_shows['Name'].iloc[0])
 
 col2.image([d.get('images') for d in df_shows['show']][-1]
            [1].get('url'), width=200, use_column_width=True)
-col2.write('als erstes hinzugefügt:  \n' + df_shows['Name'].iloc[-1])
+col2.write('**als erstes hinzugefügt:**  \n' + df_shows['Name'].iloc[-1])
 
 col3.image(df_shows.sort_values(by='Episoden', ascending=False)[
            'show'].iloc[0].get('images')[1].get('url'), width=200, use_column_width=True)
-col3.write('meiste Episoden:  \n' +
+col3.write('**meiste Episoden:**  \n' +
            df_shows.sort_values(by='Episoden', ascending=False)['Name'].iloc[0])
 
 df_shows.index = np.arange(1, len(df_shows) + 1)
@@ -344,40 +366,7 @@ df_shows.drop(columns=['added_at', 'show'], inplace=True)
 st.write(df_shows)
 
 
-# ZULETZT GESPIELT
-st.header('Zuletzt gespielt')
 
-df_currently_played = pd.DataFrame(sp.current_user_recently_played()['items'])
-
-df_currently_played['Datum'] = df_currently_played['played_at']
-df_currently_played['Song'] = [d.get('name')
-                               for d in df_currently_played['track']]
-df_currently_played['Künstler'] = [
-    d.get('artists') for d in df_currently_played['track']]
-df_currently_played['Album'] = [d.get('album').get(
-    'name') for d in df_currently_played['track']]
-df_currently_played['Popularität'] = [
-    d.get('popularity') for d in df_currently_played['track']]
-df_currently_played['Dauer'] = pd.to_datetime([d.get(
-    'duration_ms') for d in df_currently_played['track']], unit='ms').strftime('%M:%S')
-df_currently_played['Explizit'] = [
-    d.get('explicit') for d in df_currently_played['track']]
-df_currently_played['Typ'] = [d.get('type')
-                              for d in df_currently_played['track']]
-
-new_list = []
-for list in df_currently_played['track']:
-    new_list.append([nested_list['name'] for nested_list in list['artists']])
-
-df_currently_played['Künstler'] = pd.Series(new_list).values
-
-df_currently_played.index = np.arange(1, len(df_currently_played) + 1)
-
-df_currently_played.drop(
-    columns=['track', 'played_at', 'context'], inplace=True)
-
-
-st.write(df_currently_played)
 
 
 # FOLGEN
@@ -491,7 +480,7 @@ df_audio_joined = df_fav_songs.merge(df_audiodata, how='left', left_on='ID', rig
 df_audio_joined.index = np.arange(1, len(df_audio_joined) + 1)
 
 df_audio_joined['Verfügbar'] = [d.get('is_playable') for d in df_audio_joined['track']]
-
+df_audio_joined['Album-Typ'] = [d.capitalize() for d in df_audio_joined['Album-Typ']]
 
 df_audio_joined.drop(columns=['added_at','ID','type','id','uri','track_href','analysis_url','duration_ms','Lokal','track'], inplace=True)
 
@@ -506,6 +495,7 @@ num_not_available = len(df_audio_joined['Verfügbar'][df_audio_joined['Verfügba
 perc_not_available = '{:.1%}'.format(num_not_available/num_saved_songs)
 
 st.subheader(str(num_not_available) + ' deiner Lieder sind nicht mehr verfügbar')
+st.progress(value=num_not_available/num_saved_songs)
 st.caption('das sind ' + str(perc_not_available) + ' deiner Lieblingslieder')
 df_available = df_audio_joined[df_audio_joined['Verfügbar']==False]
 st.write(df_available[['Hinzugefügt am', 'Name', 'Künstler','Dauer','Album']])
@@ -520,14 +510,18 @@ def str_to_time(time_str):
 df_audio_joined['Dauer'] =df_audio_joined['Dauer'].apply(str_to_time).apply(lambda x: datetime.combine(datetime(1998, 11, 2), x))
 
 
-fig = px.bar(df_audio_joined, x="Dauer", title='Dauer deiner Lieder')
+fig = px.histogram(df_audio_joined, x="Dauer", title='Dauer deiner Lieder')
 st.plotly_chart(fig, use_container_width=True, config= {'displaylogo': False})
 
 fig = px.bar(df_audio_joined, x="danceability", title='Dauer deiner Lieder')
 st.plotly_chart(fig, use_container_width=True, config= {'displaylogo': False})
 
 
-fig = px.pie(df_audio_joined, names='Album-Typ')
+fig = px.pie(
+    df_audio_joined, 
+    names='Album-Typ',
+    title='Aus was für Album-Typen deine Lieder kommen')
+fig.update_traces(textposition='inside', textinfo='label', hoverinfo='value', showlegend=False)
 st.plotly_chart(fig, use_container_width=True, config= {'displaylogo': False})
 
 
@@ -563,6 +557,39 @@ st.plotly_chart(fig, use_container_width=True, config= {'displaylogo': False})
 
 
 
+# ZULETZT GESPIELT
+st.header('Zuletzt gespielt')
 
+df_currently_played = pd.DataFrame(sp.current_user_recently_played()['items'])
+
+df_currently_played['Datum'] = df_currently_played['played_at']
+df_currently_played['Song'] = [d.get('name')
+                               for d in df_currently_played['track']]
+df_currently_played['Künstler'] = [
+    d.get('artists') for d in df_currently_played['track']]
+df_currently_played['Album'] = [d.get('album').get(
+    'name') for d in df_currently_played['track']]
+df_currently_played['Popularität'] = [
+    d.get('popularity') for d in df_currently_played['track']]
+df_currently_played['Dauer'] = pd.to_datetime([d.get(
+    'duration_ms') for d in df_currently_played['track']], unit='ms').strftime('%M:%S')
+df_currently_played['Explizit'] = [
+    d.get('explicit') for d in df_currently_played['track']]
+df_currently_played['Typ'] = [d.get('type')
+                              for d in df_currently_played['track']]
+
+new_list = []
+for list in df_currently_played['track']:
+    new_list.append([nested_list['name'] for nested_list in list['artists']])
+
+df_currently_played['Künstler'] = pd.Series(new_list).values
+
+df_currently_played.index = np.arange(1, len(df_currently_played) + 1)
+
+df_currently_played.drop(
+    columns=['track', 'played_at', 'context'], inplace=True)
+
+
+st.write(df_currently_played)
 
 st.write('ENDE')
