@@ -86,45 +86,8 @@ SPOTIPY_REDIRECT_URI = st.secrets["SPOTIPY_REDIRECT_URI"]
 
 
 scope = 'ugc-image-upload user-read-playback-state user-modify-playback-state user-read-currently-playing app-remote-control streaming playlist-read-private playlist-read-collaborative playlist-modify-private playlist-modify-public user-follow-modify user-follow-read user-read-playback-position user-top-read user-read-recently-played user-library-modify user-library-read user-read-email user-read-private'
-sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-    scope=scope, cache_path='cache.txt'))
+sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, cache_path='cache.txt'))
 user = sp.me().get('id')
-
-class StreamlitCacheHandler(spotipy.cache_handler.CacheHandler): 
-    #A cache handler that stores the token info in the session framework provided by streamlit.
-    def __init__(self, session):
-        self.session = session
-
-    def get_cached_token(self):
-        token_info = None
-        try:
-            token_info = self.session["token_info"]
-        except KeyError:
-            print("Token not found in the session")
-
-        return token_info
-
-    def save_token_to_cache(self, token_info):
-        try:
-            self.session["token_info"] = token_info
-        except Exception as e:
-            print("Error saving token to cache: " + str(e))
-
-cache_handler = StreamlitCacheHandler(st.session_state)  # same as the FlaskSessionCacheHandler
-auth_manager = spotipy.oauth2.SpotifyOAuth(scope=scope, cache_handler=cache_handler, show_dialog=True)
-
-# if there is no cached token, open the sign in page
-if not auth_manager.validate_token(cache_handler.get_cached_token()):
-   auth_url = auth_manager.get_authorize_url()  # log in url
-
-   # if you're redirected from the sign in page, there is a code in the url
-   if 'code' in st.experimental_get_query_params():  
-       auth_manager.get_access_token(st.experimental_get_query_params()['code'])  # use the code to generate the token
-       sp = spotipy.Spotify(auth_manager=auth_manager)  
-   else:  # if no code, add a button linking to the log in url
-       print(auth_url, 'Log in')  # this adds a button linking to the authorization page
-
-
 
 # ANFANG
 st.title('🎵 Deine Spotify-Daten')
@@ -272,8 +235,7 @@ def get_all_saved_tracks(user):
 
 
 num_playlists = str(sp.user_playlists(user, offset=0).get('total'))
-df_playlists = pd.DataFrame(get_all_saved_tracks(
-    user=user))  # user_playlists.get('items')
+df_playlists = pd.DataFrame(get_all_saved_tracks(user=user))  # user_playlists.get('items')
 
 st.header('Du hast ' + num_playlists + ' Playlists gespeichert')
 df_playlists.index = np.arange(1, len(df_playlists) + 1)
@@ -338,8 +300,7 @@ st.write(df_devices)
 
 
 # PODCASTS
-st.header('Du hast ' + str(sp.current_user_saved_shows(limit=50)
-                           ['total']) + ' Podcasts gespeichert')
+st.header('Du hast ' + str(sp.current_user_saved_shows(limit=50)['total']) + ' Podcasts gespeichert')
 df_shows = pd.DataFrame(sp.current_user_saved_shows(limit=50)['items'])
 
 df_shows['Hinzugefügt am'] = df_shows['added_at']
@@ -412,22 +373,16 @@ df_fav_songs['Dauer'] = pd.to_datetime(
 
 df_fav_songs['Album'] = [d.get('name') for d in [
     d.get('album') for d in df_fav_songs['track']]]
-df_fav_songs['Album-Typ'] = [d.get('album_type')
-                             for d in [d.get('album') for d in df_fav_songs['track']]]
-df_fav_songs['Album-Release'] = [d.get('release_date')
-                                 for d in [d.get('album') for d in df_fav_songs['track']]]
-df_fav_songs['Album-Lieder'] = [d.get('total_tracks')
-                                for d in [d.get('album') for d in df_fav_songs['track']]]
+df_fav_songs['Album-Typ'] = [d.get('album_type') for d in [d.get('album') for d in df_fav_songs['track']]]
+df_fav_songs['Album-Release'] = [d.get('release_date') for d in [d.get('album') for d in df_fav_songs['track']]]
+df_fav_songs['Album-Lieder'] = [d.get('total_tracks') for d in [d.get('album') for d in df_fav_songs['track']]]
 
 df_fav_songs['Lokal'] = [d.get('is_local') for d in df_fav_songs['track']]
-df_fav_songs['Popularität'] = [d.get('popularity')
-                               for d in df_fav_songs['track']]
-df_fav_songs['Track Nr.'] = [d.get('track_number')
-                             for d in df_fav_songs['track']]
+df_fav_songs['Popularität'] = [d.get('popularity') for d in df_fav_songs['track']]
+df_fav_songs['Track Nr.'] = [d.get('track_number') for d in df_fav_songs['track']]
 df_fav_songs['ID'] = [d.get('id') for d in df_fav_songs['track']]
 
-df_fav_songs['Link'] = [d.get('spotify') for d in [d.get(
-    'external_urls') for d in df_fav_songs['track']]]
+df_fav_songs['Link'] = [d.get('spotify') for d in [d.get('external_urls') for d in df_fav_songs['track']]]
 # df_fav_songs['Snippet'] = [d.get('preview_url') for d in df_fav_songs['track']]
 
 
